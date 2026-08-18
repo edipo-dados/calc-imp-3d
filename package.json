@@ -2,6 +2,9 @@
   "name": "calc-imp-3d",
   "version": "1.0.0",
   "private": true,
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "dependencies": {
     "@prisma/client": "^5.10.0",
     "bcryptjs": "^3.0.3",
