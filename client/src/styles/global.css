@@ -1267,3 +1267,12 @@ body {
     display: none;
   }
 }
+
+
+/* === INPUT HINT === */
+.input-hint {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 0.2rem;
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, CalculoInput, ResultadoCalculo, Filamento } from '../api/client';
+import { api, CalculoInput, ResultadoCalculo, Filamento, Impressora } from '../api/client';
 import { FormSection } from '../components/FormSection';
 import { InputField } from '../components/InputField';
 import { CostVisualization } from '../components/CostVisualization';
@@ -32,16 +32,46 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
   const [inputs, setInputs] = useState<CalculoInput>({ ...DEFAULT_VALUES, ...initialValues });
   const [resultado, setResultado] = useState<ResultadoCalculo | null>(null);
   const [filamentos, setFilamentos] = useState<Filamento[]>([]);
+  const [impressoras, setImpressoras] = useState<Impressora[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [nomePeca, setNomePeca] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load filamentos
+  // Load filamentos e impressoras
   useEffect(() => {
     api.listarFilamentos().then(setFilamentos).catch(console.error);
+    api.listarImpressoras().then((imps) => {
+      setImpressoras(imps.filter((i) => i.ativa));
+    }).catch(console.error);
   }, []);
+
+  // Auto-fill from first impressora if available
+  useEffect(() => {
+    if (impressoras.length > 0 && !initialValues) {
+      const imp = impressoras[0];
+      setInputs((prev) => ({
+        ...prev,
+        potenciaWatts: imp.potenciaWatts,
+        valorImpressora: imp.valorCompra,
+        vidaUtilHoras: imp.vidaUtilHoras,
+        manutencaoPorHora: imp.manutencaoPorHora,
+        taxaFalhaPercentual: imp.taxaFalhaPercentual,
+      }));
+    }
+  }, [impressoras, initialValues]);
+
+  // Auto-fill from first filamento if available
+  useEffect(() => {
+    if (filamentos.length > 0 && !initialValues) {
+      const fil = filamentos[0];
+      setInputs((prev) => ({
+        ...prev,
+        precoPorKg: fil.precoPorKg,
+      }));
+    }
+  }, [filamentos, initialValues]);
 
   // Apply initialValues when they change (duplicate feature)
   useEffect(() => {
@@ -87,6 +117,21 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
     }
   };
 
+  const handleImpressoraSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value);
+    const imp = impressoras.find((i) => i.id === id);
+    if (imp) {
+      setInputs((prev) => ({
+        ...prev,
+        potenciaWatts: imp.potenciaWatts,
+        valorImpressora: imp.valorCompra,
+        vidaUtilHoras: imp.vidaUtilHoras,
+        manutencaoPorHora: imp.manutencaoPorHora,
+        taxaFalhaPercentual: imp.taxaFalhaPercentual,
+      }));
+    }
+  };
+
   const handleSave = async () => {
     if (!nomePeca.trim()) return;
     setSaving(true);
@@ -108,11 +153,66 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
   return (
     <div className="calculator-layout">
       <div className="calculator-form">
+        {/* Impressora selector */}
+        <FormSection title="Impressora" icon="🖨️">
+          {impressoras.length > 0 && (
+            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="input-label">Selecionar impressora cadastrada</label>
+              <div className="select-wrapper">
+                <select onChange={handleImpressoraSelect} defaultValue="">
+                  <option value="" disabled>
+                    Selecione uma impressora...
+                  </option>
+                  {impressoras.map((imp) => (
+                    <option key={imp.id} value={imp.id}>
+                      {imp.nome} {imp.marca && `(${imp.marca})`} — {imp.potenciaWatts}W
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="input-hint">Preenche automaticamente: potência, valor, vida útil, manutenção e taxa de falha</span>
+            </div>
+          )}
+          <InputField
+            label="Valor da impressora"
+            value={inputs.valorImpressora}
+            onChange={updateInput('valorImpressora')}
+            suffix="R$"
+            min={0}
+            step={100}
+          />
+          <InputField
+            label="Vida útil estimada"
+            value={inputs.vidaUtilHoras}
+            onChange={updateInput('vidaUtilHoras')}
+            suffix="horas"
+            min={1}
+            step={100}
+          />
+          <InputField
+            label="Manutenção por hora"
+            value={inputs.manutencaoPorHora}
+            onChange={updateInput('manutencaoPorHora')}
+            suffix="R$/h"
+            min={0}
+            step={0.1}
+          />
+          <InputField
+            label="Taxa de falha"
+            value={inputs.taxaFalhaPercentual}
+            onChange={updateInput('taxaFalhaPercentual')}
+            suffix="%"
+            min={0}
+            max={90}
+            step={1}
+          />
+        </FormSection>
+
         {/* Filamento */}
         <FormSection title="Filamento" icon="🧵">
           {filamentos.length > 0 && (
-            <div className="input-group">
-              <label className="input-label">Filamento pré-cadastrado</label>
+            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="input-label">Selecionar filamento cadastrado</label>
               <div className="select-wrapper">
                 <select onChange={handleFilamentoSelect} defaultValue="">
                   <option value="" disabled>
@@ -120,11 +220,12 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
                   </option>
                   {filamentos.map((f) => (
                     <option key={f.id} value={f.id}>
-                      {f.nome} — R$ {f.precoPorKg.toFixed(2)}/kg
+                      {f.nome} ({f.tipo} {f.cor}) — R$ {f.precoPorKg.toFixed(2)}/kg {f.estoqueKg < f.estoqueMinKg ? '⚠️' : ''}
                     </option>
                   ))}
                 </select>
               </div>
+              <span className="input-hint">Preenche automaticamente o preço por kg</span>
             </div>
           )}
           <InputField
@@ -182,36 +283,8 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
           />
         </FormSection>
 
-        {/* Máquina & Manutenção */}
-        <FormSection title="Máquina & Manutenção" icon="🔧">
-          <InputField
-            label="Valor da impressora"
-            value={inputs.valorImpressora}
-            onChange={updateInput('valorImpressora')}
-            suffix="R$"
-            min={0}
-            step={100}
-          />
-          <InputField
-            label="Vida útil estimada"
-            value={inputs.vidaUtilHoras}
-            onChange={updateInput('vidaUtilHoras')}
-            suffix="horas"
-            min={1}
-            step={100}
-          />
-          <InputField
-            label="Manutenção por hora"
-            value={inputs.manutencaoPorHora}
-            onChange={updateInput('manutencaoPorHora')}
-            suffix="R$/h"
-            min={0}
-            step={0.1}
-          />
-        </FormSection>
-
-        {/* Mão de obra & Falhas */}
-        <FormSection title="Mão de obra & Falhas" icon="👷">
+        {/* Mão de obra */}
+        <FormSection title="Mão de obra" icon="👷">
           <InputField
             label="Horas de trabalho (setup)"
             value={inputs.horasTrabalho}
@@ -227,15 +300,6 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
             suffix="R$/h"
             min={0}
             step={5}
-          />
-          <InputField
-            label="Taxa de falha"
-            value={inputs.taxaFalhaPercentual}
-            onChange={updateInput('taxaFalhaPercentual')}
-            suffix="%"
-            min={0}
-            max={90}
-            step={1}
           />
         </FormSection>
 
