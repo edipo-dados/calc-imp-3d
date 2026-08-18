@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, CalculoInput, ResultadoCalculo, Filamento, PerfilCustos, CustoExtra } from '../api/client';
+import { api, CalculoInput, ResultadoCalculo, Filamento, Impressora, PerfilCustos, CustoExtra } from '../api/client';
 import { FormSection } from '../components/FormSection';
 import { InputField } from '../components/InputField';
 import { CostVisualization } from '../components/CostVisualization';
@@ -49,8 +49,10 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
   const [inputs, setInputs] = useState<CalculoInput>({ ...DEFAULT_VALUES, ...initialValues });
   const [resultado, setResultado] = useState<ResultadoCalculo | null>(null);
   const [filamentos, setFilamentos] = useState<Filamento[]>([]);
+  const [impressoras, setImpressoras] = useState<Impressora[]>([]);
   const [perfis, setPerfis] = useState<PerfilCustos[]>([]);
   const [perfilSelecionadoId, setPerfilSelecionadoId] = useState<number | null>(null);
+  const [impressoraSelecionadaId, setImpressoraSelecionadaId] = useState<number | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [nomePeca, setNomePeca] = useState('');
   const [saving, setSaving] = useState(false);
@@ -72,6 +74,9 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
   // Load data
   useEffect(() => {
     api.listarFilamentos().then(setFilamentos).catch(console.error);
+    api.listarImpressoras().then((data) => {
+      setImpressoras(data.filter((i) => i.ativa));
+    }).catch(console.error);
     api.listarPerfis().then((data) => {
       setPerfis(data.filter((p) => p.ativo));
       // Auto-select first active profile
@@ -82,28 +87,49 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
     }).catch(console.error);
   }, []);
 
-  // Apply profile when selected
+  // Apply profile when selected (tarifa, mão de obra, custos fixos, desperdício)
+  // Impressora fields (potência, valor, vidaUtil, manutenção, taxa falha) vêm do seletor de impressora
   useEffect(() => {
     if (perfilSelecionadoId) {
       const perfil = perfis.find((p) => p.id === perfilSelecionadoId);
       if (perfil) {
         setInputs((prev) => ({
           ...prev,
-          valorImpressora: perfil.valorImpressora,
-          vidaUtilHoras: perfil.vidaUtilHoras,
-          manutencaoPorHora: perfil.manutencaoPorHora,
-          taxaFalhaPercentual: perfil.taxaFalhaPercentual,
-          potenciaWatts: perfil.potenciaWatts,
           tarifaKwh: perfil.tarifaKwh,
           horasTrabalho: perfil.horasTrabalho,
           valorHora: perfil.valorHora,
           custoFixoMensal: perfil.custoFixoMensal,
           impressoesPorMes: perfil.impressoesPorMes,
           desperdicioPercentual: perfil.desperdicioPercentual,
+          // Só aplica campos de impressora do perfil se nenhuma impressora estiver selecionada
+          ...(impressoraSelecionadaId ? {} : {
+            valorImpressora: perfil.valorImpressora,
+            vidaUtilHoras: perfil.vidaUtilHoras,
+            manutencaoPorHora: perfil.manutencaoPorHora,
+            taxaFalhaPercentual: perfil.taxaFalhaPercentual,
+            potenciaWatts: perfil.potenciaWatts,
+          }),
         }));
       }
     }
-  }, [perfilSelecionadoId, perfis]);
+  }, [perfilSelecionadoId, perfis, impressoraSelecionadaId]);
+
+  // Apply impressora when selected (overrides perfil for machine-specific fields)
+  useEffect(() => {
+    if (impressoraSelecionadaId) {
+      const imp = impressoras.find((i) => i.id === impressoraSelecionadaId);
+      if (imp) {
+        setInputs((prev) => ({
+          ...prev,
+          potenciaWatts: imp.potenciaWatts,
+          valorImpressora: imp.valorCompra,
+          vidaUtilHoras: imp.vidaUtilHoras,
+          manutencaoPorHora: imp.manutencaoPorHora,
+          taxaFalhaPercentual: imp.taxaFalhaPercentual,
+        }));
+      }
+    }
+  }, [impressoraSelecionadaId, impressoras]);
 
   // Apply initialValues when they change (duplicate feature)
   useEffect(() => {
@@ -288,6 +314,11 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
     setPerfilSelecionadoId(isNaN(id) ? null : id);
   };
 
+  const handleImpressoraChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value);
+    setImpressoraSelecionadaId(isNaN(id) ? null : id);
+  };
+
   return (
     <div className="calculator-layout">
       <div className="calculator-form">
@@ -354,6 +385,26 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
               <div key={i} className="stock-alert">{alerta}</div>
             ))}
           </div>
+        )}
+
+        {/* Impressora selector - visible in both modes */}
+        {impressoras.length > 0 && (
+          <FormSection title="Impressora" icon="🖨️">
+            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+              <label className="input-label">Selecionar impressora cadastrada</label>
+              <div className="select-wrapper">
+                <select value={impressoraSelecionadaId || ''} onChange={handleImpressoraChange}>
+                  <option value="" disabled>Selecione uma impressora...</option>
+                  {impressoras.map((imp) => (
+                    <option key={imp.id} value={imp.id}>
+                      {imp.nome} {imp.marca && `(${imp.marca})`} — {imp.potenciaWatts}W
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="input-hint">Define: potência, valor, vida útil, manutenção e taxa de falha</span>
+            </div>
+          </FormSection>
         )}
 
         {/* Multi-peça */}
