@@ -75,7 +75,7 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
   useEffect(() => {
     api.listarFilamentos().then(setFilamentos).catch(console.error);
     api.listarImpressoras().then((data) => {
-      setImpressoras(data.filter((i) => i.ativa));
+      setImpressoras(data.filter((i) => i.ativa !== false));
     }).catch(console.error);
     api.listarPerfis().then((data) => {
       setPerfis(data.filter((p) => p.ativo));
@@ -388,8 +388,8 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
         )}
 
         {/* Impressora selector - visible in both modes */}
-        {impressoras.length > 0 && (
-          <FormSection title="Impressora" icon="🖨️">
+        <FormSection title="Impressora" icon="🖨️">
+          {impressoras.length > 0 ? (
             <div className="input-group" style={{ gridColumn: '1 / -1' }}>
               <label className="input-label">Selecionar impressora cadastrada</label>
               <div className="select-wrapper">
@@ -404,8 +404,12 @@ export function CalculadoraPage({ initialValues, onNavigateToHistory }: Calculad
               </div>
               <span className="input-hint">Define: potência, valor, vida útil, manutenção e taxa de falha</span>
             </div>
-          </FormSection>
-        )}
+          ) : (
+            <div className="input-group" style={{ gridColumn: '1 / -1' }}>
+              <span className="input-hint">Nenhuma impressora cadastrada. Cadastre na aba Cadastro → Impressoras.</span>
+            </div>
+          )}
+        </FormSection>
 
         {/* Multi-peça */}
         {pecas.map((peca, index) => (
