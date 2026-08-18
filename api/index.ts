@@ -289,8 +289,42 @@ app.post('/api/orcamentos', authRequired, async (req, res) => {
   if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
   const { nomePeca, ...inputs } = result.data;
   const calculo = calcularPreco(inputs);
-  const orc = await prisma.orcamento.create({ data: { nomePeca, inputs: inputs as object, breakdown: calculo.breakdown as object, precoMinimo: calculo.precoMinimo, precoIdeal: calculo.precoIdeal, precoPremium: calculo.precoPremium } });
-  return res.status(201).json(orc);
+
+  // Optional extra fields
+  const filamentoId = req.body.filamentoId as number | undefined;
+  const pesoSuporteGramas = req.body.pesoSuporteGramas as number | undefined;
+  const custosExtras = req.body.custosExtras as { nome: string; valor: number }[] | undefined;
+
+  let totalExtras = 0;
+  if (custosExtras && Array.isArray(custosExtras)) {
+    totalExtras = custosExtras.reduce((sum: number, e: { valor: number }) => sum + (e.valor || 0), 0);
+  }
+
+  const orc = await prisma.orcamento.create({
+    data: {
+      nomePeca,
+      inputs: { ...inputs, pesoSuporteGramas, custosExtras, filamentoId } as object,
+      breakdown: { ...calculo.breakdown, totalExtras } as object,
+      precoMinimo: calculo.precoMinimo + totalExtras,
+      precoIdeal: calculo.precoIdeal + totalExtras,
+      precoPremium: calculo.precoPremium + totalExtras,
+    },
+  });
+
+  // Deduct from filament stock
+  let alertaEstoqueBaixo = false;
+  if (filamentoId) {
+    const pesoTotal = inputs.pesoGramas + (pesoSuporteGramas || 0);
+    const kgConsumido = (pesoTotal * (1 + inputs.desperdicioPercentual / 100)) / 1000;
+    const filamento = await prisma.filamento.findUnique({ where: { id: filamentoId } });
+    if (filamento) {
+      const novoEstoque = Math.max(filamento.estoqueKg - kgConsumido, 0);
+      const updated = await prisma.filamento.update({ where: { id: filamentoId }, data: { estoqueKg: novoEstoque } });
+      alertaEstoqueBaixo = updated.estoqueKg <= updated.estoqueMinKg;
+    }
+  }
+
+  return res.status(201).json({ ...orc, alertaEstoqueBaixo });
 });
 
 app.get('/api/orcamentos', authRequired, async (_req, res) => {
@@ -389,6 +423,73 @@ app.post('/api/projecao', authRequired, (req, res) => {
   const result = projecaoInputSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
   return res.json(calcularProjecaoMensal(result.data));
+});
+
+// === PERFIS DE CUSTOS ===
+const perfilCustosCreateSchema = z.object({
+  nome: z.string().min(1),
+  valorImpressora: z.number().positive(),
+  vidaUtilHoras: z.number().positive(),
+  manutencaoPorHora: z.number().nonnegative().optional().default(0),
+  taxaFalhaPercentual: z.number().min(0).max(90).optional().default(5),
+  potenciaWatts: z.number().nonnegative(),
+  tarifaKwh: z.number().nonnegative().optional().default(0.85),
+  horasTrabalho: z.number().nonnegative().optional().default(0.5),
+  valorHora: z.number().nonnegative().optional().default(50),
+  custoFixoMensal: z.number().nonnegative().optional().default(500),
+  impressoesPorMes: z.number().positive().optional().default(30),
+  desperdicioPercentual: z.number().min(0).max(100).optional().default(5),
+  ativo: z.boolean().optional().default(true),
+});
+
+app.get('/api/perfis', authRequired, async (_req, res) => {
+  try {
+    const perfis = await prisma.perfilCustos.findMany({ orderBy: { nome: 'asc' } });
+    return res.json(perfis);
+  } catch (err: any) {
+    console.error('Erro ao listar perfis:', err);
+    return res.status(500).json({ error: err.message || 'Erro interno' });
+  }
+});
+
+app.get('/api/perfis/:id', authRequired, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  const perfil = await prisma.perfilCustos.findUnique({ where: { id } });
+  if (!perfil) return res.status(404).json({ error: 'Perfil não encontrado' });
+  return res.json(perfil);
+});
+
+app.post('/api/perfis', authRequired, async (req, res) => {
+  const result = perfilCustosCreateSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
+  try {
+    const perfil = await prisma.perfilCustos.create({ data: result.data });
+    return res.status(201).json(perfil);
+  } catch (err: any) {
+    console.error('Erro ao criar perfil:', err);
+    return res.status(500).json({ error: err.message || 'Erro interno' });
+  }
+});
+
+app.put('/api/perfis/:id', authRequired, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  const result = perfilCustosCreateSchema.partial().safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
+  try {
+    const perfil = await prisma.perfilCustos.update({ where: { id }, data: result.data });
+    return res.json(perfil);
+  } catch { return res.status(404).json({ error: 'Perfil não encontrado' }); }
+});
+
+app.delete('/api/perfis/:id', authRequired, async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    await prisma.perfilCustos.delete({ where: { id } });
+    return res.json({ message: 'Perfil removido' });
+  } catch { return res.status(404).json({ error: 'Perfil não encontrado' }); }
 });
 
 export default app;

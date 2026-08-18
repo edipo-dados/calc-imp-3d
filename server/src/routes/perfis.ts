@@ -7,8 +7,14 @@ const prisma = new PrismaClient();
 
 // GET /api/perfis
 router.get('/', async (_req: Request, res: Response) => {
-  const perfis = await prisma.perfilCustos.findMany({ orderBy: { nome: 'asc' } });
-  return res.json(perfis);
+  try {
+    const perfis = await prisma.perfilCustos.findMany({ orderBy: { nome: 'asc' } });
+    return res.json(perfis);
+  } catch (err: unknown) {
+    console.error('Erro ao listar perfis:', err);
+    const message = err instanceof Error ? err.message : 'Erro desconhecido';
+    return res.status(500).json({ error: message });
+  }
 });
 
 // GET /api/perfis/:id
@@ -26,8 +32,14 @@ router.post('/', async (req: Request, res: Response) => {
   if (!result.success) {
     return res.status(400).json({ errors: result.error.flatten().fieldErrors });
   }
-  const perfil = await prisma.perfilCustos.create({ data: result.data });
-  return res.status(201).json(perfil);
+  try {
+    const perfil = await prisma.perfilCustos.create({ data: result.data });
+    return res.status(201).json(perfil);
+  } catch (err: unknown) {
+    console.error('Erro ao criar perfil:', err);
+    const message = err instanceof Error ? err.message : 'Erro desconhecido';
+    return res.status(500).json({ error: message });
+  }
 });
 
 // PUT /api/perfis/:id
