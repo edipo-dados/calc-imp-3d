@@ -189,6 +189,25 @@ app.get('/api/debug', async (_req, res) => {
   }
 });
 
+// Temporary: create admin (remove after use)
+app.get('/api/setup-admin', async (_req, res) => {
+  try {
+    const email = 'admin@calculadora3d.com';
+    const existing = await prisma.usuario.findUnique({ where: { email } });
+    if (existing) {
+      // Update to admin role and reset password
+      const senhaHash = await bcrypt.hash('admin123', 10);
+      await prisma.usuario.update({ where: { email }, data: { role: 'admin', senha: senhaHash } });
+      return res.json({ message: 'Admin atualizado', email, senha: 'admin123' });
+    }
+    const senhaHash = await bcrypt.hash('admin123', 10);
+    await prisma.usuario.create({ data: { nome: 'Administrador', email, senha: senhaHash, role: 'admin' } });
+    return res.json({ message: 'Admin criado', email, senha: 'admin123' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // === AUTH ROUTES ===
 app.post('/api/auth/registrar', async (req, res) => {
   try {
