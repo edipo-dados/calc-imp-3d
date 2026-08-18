@@ -8,7 +8,11 @@ import { z } from 'zod';
 // === Prisma ===
 const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
+  log: ['error'],
 });
+
+// Disconnect on process end to avoid connection leak
+process.on('beforeExit', () => prisma.$disconnect());
 
 // === JWT ===
 const JWT_SECRET = process.env.JWT_SECRET || 'calculadora3d-secret-key';
