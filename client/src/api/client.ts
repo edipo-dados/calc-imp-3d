@@ -11,10 +11,16 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE}${url}`, {
-    headers,
-    ...options,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${url}`, {
+      headers,
+      ...options,
+    });
+  } catch (networkError) {
+    throw { error: 'Erro de conexão com o servidor. Verifique sua internet.' };
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw err;

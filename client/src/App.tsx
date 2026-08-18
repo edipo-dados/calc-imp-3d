@@ -19,12 +19,20 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
+      const timeout = setTimeout(() => {
+        // If API doesn't respond in 5s, skip auth check
+        setCheckingAuth(false);
+      }, 5000);
+
       api.getMe()
         .then((user) => setUsuario(user))
         .catch(() => {
           localStorage.removeItem('token');
         })
-        .finally(() => setCheckingAuth(false));
+        .finally(() => {
+          clearTimeout(timeout);
+          setCheckingAuth(false);
+        });
     } else {
       setCheckingAuth(false);
     }
