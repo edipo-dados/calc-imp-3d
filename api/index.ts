@@ -174,6 +174,21 @@ app.use(express.json());
 // Health
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Debug connection (temporary)
+app.get('/api/debug', async (_req, res) => {
+  try {
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const masked = dbUrl.replace(/:([^@]+)@/, ':***@');
+    await prisma.$connect();
+    const count = await prisma.usuario.count();
+    return res.json({ db: 'connected', masked_url: masked, usuarios: count });
+  } catch (err: any) {
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const masked = dbUrl.replace(/:([^@]+)@/, ':***@');
+    return res.status(500).json({ db: 'error', error: err.message, masked_url: masked });
+  }
+});
+
 // === AUTH ROUTES ===
 app.post('/api/auth/registrar', async (req, res) => {
   try {
