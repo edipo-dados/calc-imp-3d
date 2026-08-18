@@ -8,26 +8,26 @@ datasource db {
 }
 
 model Usuario {
-  id              Int      @id @default(autoincrement())
-  nome            String
-  email           String   @unique
-  senha           String
-  role            String   @default("pendente")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senha     String
+  role      String   @default("pendente")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Filamento {
-  id              Int      @id @default(autoincrement())
-  nome            String
-  tipo            String   @default("PLA")
-  cor             String   @default("Padrão")
-  precoPorKg      Float
-  densidade       Float?
-  estoqueKg       Float    @default(0)
-  estoqueMinKg    Float    @default(0.2)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  nome         String
+  tipo         String   @default("PLA")
+  cor          String   @default("Padrão")
+  precoPorKg   Float
+  densidade    Float?
+  estoqueKg    Float    @default(0)
+  estoqueMinKg Float    @default(0.2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Impressora {
@@ -50,12 +50,31 @@ model Impressora {
 }
 
 model Orcamento {
-  id              Int      @id @default(autoincrement())
-  nomePeca        String
-  inputs          Json
-  breakdown       Json
-  precoIdeal      Float
-  precoMinimo     Float
-  precoPremium    Float
-  createdAt       DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  nomePeca     String
+  inputs       Json
+  breakdown    Json
+  precoIdeal   Float
+  precoMinimo  Float
+  precoPremium Float
+  createdAt    DateTime @default(now())
+}
+
+model PerfilCustos {
+  id                    Int      @id @default(autoincrement())
+  nome                  String
+  valorImpressora       Float
+  vidaUtilHoras         Float
+  manutencaoPorHora     Float    @default(0)
+  taxaFalhaPercentual   Float    @default(5)
+  potenciaWatts         Float
+  tarifaKwh             Float    @default(0.85)
+  horasTrabalho         Float    @default(0.5)
+  valorHora             Float    @default(50)
+  custoFixoMensal       Float    @default(500)
+  impressoesPorMes      Float    @default(30)
+  desperdicioPercentual Float    @default(5)
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
