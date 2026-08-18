@@ -6,7 +6,9 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
 // === Prisma ===
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL,
+});
 
 // === JWT ===
 const JWT_SECRET = process.env.JWT_SECRET || 'calculadora3d-secret-key';
@@ -174,29 +176,39 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // === AUTH ROUTES ===
 app.post('/api/auth/registrar', async (req, res) => {
-  const schema = z.object({ nome: z.string().min(2), email: z.string().email(), senha: z.string().min(6) });
-  const result = schema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
-  const { nome, email, senha } = result.data;
-  const existing = await prisma.usuario.findUnique({ where: { email } });
-  if (existing) return res.status(400).json({ error: 'Email já cadastrado' });
-  const senhaHash = await bcrypt.hash(senha, 10);
-  const usuario = await prisma.usuario.create({ data: { nome, email, senha: senhaHash, role: 'pendente' } });
-  return res.status(201).json({ message: 'Cadastro realizado. Aguarde aprovação do administrador.', usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, role: usuario.role } });
+  try {
+    const schema = z.object({ nome: z.string().min(2), email: z.string().email(), senha: z.string().min(6) });
+    const result = schema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
+    const { nome, email, senha } = result.data;
+    const existing = await prisma.usuario.findUnique({ where: { email } });
+    if (existing) return res.status(400).json({ error: 'Email já cadastrado' });
+    const senhaHash = await bcrypt.hash(senha, 10);
+    const usuario = await prisma.usuario.create({ data: { nome, email, senha: senhaHash, role: 'pendente' } });
+    return res.status(201).json({ message: 'Cadastro realizado. Aguarde aprovação do administrador.', usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, role: usuario.role } });
+  } catch (err: any) {
+    console.error('Register error:', err);
+    return res.status(500).json({ error: 'Erro interno ao registrar. Verifique a conexão com o banco.' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
-  const schema = z.object({ email: z.string().email(), senha: z.string().min(1) });
-  const result = schema.safeParse(req.body);
-  if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
-  const { email, senha } = result.data;
-  const usuario = await prisma.usuario.findUnique({ where: { email } });
-  if (!usuario) return res.status(401).json({ error: 'Email ou senha incorretos' });
-  const ok = await bcrypt.compare(senha, usuario.senha);
-  if (!ok) return res.status(401).json({ error: 'Email ou senha incorretos' });
-  if (usuario.role === 'pendente') return res.status(403).json({ error: 'Cadastro pendente de aprovação pelo administrador' });
-  const token = generateToken({ id: usuario.id, email: usuario.email, role: usuario.role });
-  return res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, role: usuario.role } });
+  try {
+    const schema = z.object({ email: z.string().email(), senha: z.string().min(1) });
+    const result = schema.safeParse(req.body);
+    if (!result.success) return res.status(400).json({ errors: result.error.flatten().fieldErrors });
+    const { email, senha } = result.data;
+    const usuario = await prisma.usuario.findUnique({ where: { email } });
+    if (!usuario) return res.status(401).json({ error: 'Email ou senha incorretos' });
+    const ok = await bcrypt.compare(senha, usuario.senha);
+    if (!ok) return res.status(401).json({ error: 'Email ou senha incorretos' });
+    if (usuario.role === 'pendente') return res.status(403).json({ error: 'Cadastro pendente de aprovação pelo administrador' });
+    const token = generateToken({ id: usuario.id, email: usuario.email, role: usuario.role });
+    return res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email, role: usuario.role } });
+  } catch (err: any) {
+    console.error('Login error:', err);
+    return res.status(500).json({ error: 'Erro interno ao fazer login. Verifique a conexão com o banco.' });
+  }
 });
 
 app.get('/api/auth/me', authRequired, async (req, res) => {
