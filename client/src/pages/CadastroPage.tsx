@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, Filamento, Impressora } from '../api/client';
+import { api, Filamento, Impressora, PerfilCustos } from '../api/client';
 
-type SubTab = 'filamentos' | 'impressoras';
+type SubTab = 'filamentos' | 'impressoras' | 'perfis';
 
 // === Filamento Form State ===
 interface FilamentoForm {
@@ -77,10 +77,17 @@ export function CadastroPage() {
         >
           🖨️ Impressoras
         </button>
+        <button
+          className={`sub-tab ${subTab === 'perfis' ? 'active' : ''}`}
+          onClick={() => setSubTab('perfis')}
+        >
+          ⚙️ Perfis de Custos
+        </button>
       </div>
 
       {subTab === 'filamentos' && <FilamentosSection />}
       {subTab === 'impressoras' && <ImpressorasSection />}
+      {subTab === 'perfis' && <PerfisSection />}
     </div>
   );
 }
@@ -710,6 +717,284 @@ function ImpressorasSection() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ============================================================
+// PERFIS DE CUSTOS SECTION
+// ============================================================
+
+interface PerfilForm {
+  nome: string;
+  valorImpressora: number;
+  vidaUtilHoras: number;
+  manutencaoPorHora: number;
+  taxaFalhaPercentual: number;
+  potenciaWatts: number;
+  tarifaKwh: number;
+  horasTrabalho: number;
+  valorHora: number;
+  custoFixoMensal: number;
+  impressoesPorMes: number;
+  desperdicioPercentual: number;
+  ativo: boolean;
+}
+
+const emptyPerfilForm: PerfilForm = {
+  nome: '',
+  valorImpressora: 3000,
+  vidaUtilHoras: 5000,
+  manutencaoPorHora: 0.5,
+  taxaFalhaPercentual: 5,
+  potenciaWatts: 200,
+  tarifaKwh: 0.85,
+  horasTrabalho: 0.5,
+  valorHora: 50,
+  custoFixoMensal: 500,
+  impressoesPorMes: 30,
+  desperdicioPercentual: 5,
+  ativo: true,
+};
+
+function PerfisSection() {
+  const [perfis, setPerfis] = useState<PerfilCustos[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<PerfilForm>(emptyPerfilForm);
+
+  const loadPerfis = useCallback(async () => {
+    try {
+      const data = await api.listarPerfis();
+      setPerfis(data);
+    } catch (e) {
+      console.error('Erro ao carregar perfis:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPerfis(); }, [loadPerfis]);
+
+  const handleSubmit = async () => {
+    if (!form.nome || form.valorImpressora <= 0 || form.vidaUtilHoras <= 0) return;
+    try {
+      if (editingId) {
+        await api.atualizarPerfil(editingId, form);
+      } else {
+        await api.criarPerfil(form as Omit<PerfilCustos, 'id' | 'createdAt' | 'updatedAt'>);
+      }
+      setForm(emptyPerfilForm);
+      setShowForm(false);
+      setEditingId(null);
+      await loadPerfis();
+    } catch (e) {
+      console.error('Erro ao salvar perfil:', e);
+    }
+  };
+
+  const handleEdit = (p: PerfilCustos) => {
+    setForm({
+      nome: p.nome,
+      valorImpressora: p.valorImpressora,
+      vidaUtilHoras: p.vidaUtilHoras,
+      manutencaoPorHora: p.manutencaoPorHora,
+      taxaFalhaPercentual: p.taxaFalhaPercentual,
+      potenciaWatts: p.potenciaWatts,
+      tarifaKwh: p.tarifaKwh,
+      horasTrabalho: p.horasTrabalho,
+      valorHora: p.valorHora,
+      custoFixoMensal: p.custoFixoMensal,
+      impressoesPorMes: p.impressoesPorMes,
+      desperdicioPercentual: p.desperdicioPercentual,
+      ativo: p.ativo,
+    });
+    setEditingId(p.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Remover este perfil de custos?')) return;
+    try {
+      await api.deletarPerfil(id);
+      await loadPerfis();
+    } catch (e) {
+      console.error('Erro ao deletar perfil:', e);
+    }
+  };
+
+  if (loading) return <div className="loading">Carregando perfis de custos...</div>;
+
+  return (
+    <div>
+      <div className="cadastro-header">
+        <h2>Perfis de Custos</h2>
+        <button
+          className="btn btn-primary"
+          onClick={() => { setForm(emptyPerfilForm); setEditingId(null); setShowForm(true); }}
+        >
+          + Adicionar
+        </button>
+      </div>
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal cadastro-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{editingId ? 'Editar Perfil' : 'Novo Perfil de Custos'}</h3>
+            <div className="cadastro-form-grid">
+              <div className="input-group cadastro-form-full">
+                <label className="input-label">Nome do Perfil *</label>
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    value={form.nome}
+                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                    placeholder="Ex: Impressora FDM, Resina UV..."
+                  />
+                </div>
+              </div>
+
+              {/* Impressora */}
+              <div className="input-group">
+                <label className="input-label">Valor da Impressora (R$)</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.valorImpressora || ''} onChange={(e) => setForm({ ...form, valorImpressora: parseFloat(e.target.value) || 0 })} min={0} step={100} />
+                  <span className="input-suffix">R$</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Vida Útil (horas)</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.vidaUtilHoras || ''} onChange={(e) => setForm({ ...form, vidaUtilHoras: parseFloat(e.target.value) || 0 })} min={1} step={100} />
+                  <span className="input-suffix">h</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Manutenção/Hora</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.manutencaoPorHora || ''} onChange={(e) => setForm({ ...form, manutencaoPorHora: parseFloat(e.target.value) || 0 })} min={0} step={0.1} />
+                  <span className="input-suffix">R$/h</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Taxa de Falha</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.taxaFalhaPercentual} onChange={(e) => setForm({ ...form, taxaFalhaPercentual: parseFloat(e.target.value) || 0 })} min={0} max={90} step={1} />
+                  <span className="input-suffix">%</span>
+                </div>
+              </div>
+
+              {/* Energia */}
+              <div className="input-group">
+                <label className="input-label">Potência</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.potenciaWatts || ''} onChange={(e) => setForm({ ...form, potenciaWatts: parseFloat(e.target.value) || 0 })} min={0} step={10} />
+                  <span className="input-suffix">W</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Tarifa Energia</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.tarifaKwh || ''} onChange={(e) => setForm({ ...form, tarifaKwh: parseFloat(e.target.value) || 0 })} min={0} step={0.01} />
+                  <span className="input-suffix">R$/kWh</span>
+                </div>
+              </div>
+
+              {/* Mão de obra */}
+              <div className="input-group">
+                <label className="input-label">Horas de Setup</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.horasTrabalho || ''} onChange={(e) => setForm({ ...form, horasTrabalho: parseFloat(e.target.value) || 0 })} min={0} step={0.25} />
+                  <span className="input-suffix">h</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Valor da Hora</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.valorHora || ''} onChange={(e) => setForm({ ...form, valorHora: parseFloat(e.target.value) || 0 })} min={0} step={5} />
+                  <span className="input-suffix">R$/h</span>
+                </div>
+              </div>
+
+              {/* Custos fixos */}
+              <div className="input-group">
+                <label className="input-label">Custo Fixo Mensal</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.custoFixoMensal || ''} onChange={(e) => setForm({ ...form, custoFixoMensal: parseFloat(e.target.value) || 0 })} min={0} step={50} />
+                  <span className="input-suffix">R$/mês</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Impressões/Mês</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.impressoesPorMes || ''} onChange={(e) => setForm({ ...form, impressoesPorMes: parseFloat(e.target.value) || 0 })} min={1} step={1} />
+                  <span className="input-suffix">peças</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Desperdício</label>
+                <div className="input-wrapper">
+                  <input type="number" value={form.desperdicioPercentual} onChange={(e) => setForm({ ...form, desperdicioPercentual: parseFloat(e.target.value) || 0 })} min={0} max={100} step={1} />
+                  <span className="input-suffix">%</span>
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label checkbox-label">
+                  <input type="checkbox" checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} />
+                  Perfil ativo
+                </label>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>
+                {editingId ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Perfis List */}
+      {perfis.length === 0 ? (
+        <div className="history-empty">
+          <p>Nenhum perfil de custos cadastrado.</p>
+          <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Crie um perfil para usar no modo rápido da Calculadora.</p>
+        </div>
+      ) : (
+        <div className="cadastro-list">
+          {perfis.map((p) => (
+            <div key={p.id} className={`cadastro-item ${!p.ativo ? 'inativa' : ''}`}>
+              <div className="cadastro-item-header">
+                <div className="cadastro-item-info">
+                  <span className="cadastro-item-name">
+                    {p.nome}
+                    {!p.ativo && <span className="status-badge inativa">Inativo</span>}
+                  </span>
+                  <span className="cadastro-item-meta">
+                    {p.potenciaWatts}W • R$ {p.valorImpressora.toFixed(0)} • {p.vidaUtilHoras}h vida útil
+                  </span>
+                </div>
+                <span className="cadastro-item-price">R$ {(p.custoFixoMensal / p.impressoesPorMes).toFixed(2)}/peça</span>
+              </div>
+              <div className="cadastro-item-stats">
+                <div className="stat-row"><span>Impressora:</span><span>R$ {p.valorImpressora.toFixed(0)} / {p.vidaUtilHoras}h</span></div>
+                <div className="stat-row"><span>Energia:</span><span>{p.potenciaWatts}W × R$ {p.tarifaKwh.toFixed(2)}/kWh</span></div>
+                <div className="stat-row"><span>Mão de obra:</span><span>{p.horasTrabalho}h × R$ {p.valorHora.toFixed(2)}/h</span></div>
+                <div className="stat-row"><span>Custo fixo:</span><span>R$ {p.custoFixoMensal.toFixed(0)}/mês ÷ {p.impressoesPorMes} peças</span></div>
+                <div className="stat-row"><span>Falha / Desperdício:</span><span>{p.taxaFalhaPercentual}% / {p.desperdicioPercentual}%</span></div>
+              </div>
+              <div className="cadastro-item-actions">
+                <button className="btn btn-sm btn-secondary" onClick={() => handleEdit(p)}>✏️ Editar</button>
+                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(p.id)}>🗑️</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

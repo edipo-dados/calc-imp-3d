@@ -103,3 +103,25 @@ export const projecaoInputSchema = z.object({
 });
 
 export type ProjecaoInput = z.infer<typeof projecaoInputSchema>;
+
+// === Perfil de Custos schemas ===
+
+export const perfilCustosCreateSchema = z.object({
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  valorImpressora: z.number().positive('Valor da impressora deve ser positivo'),
+  vidaUtilHoras: z.number().positive('Vida útil deve ser positiva'),
+  manutencaoPorHora: z.number().nonnegative().optional().default(0),
+  taxaFalhaPercentual: z.number().min(0).max(90).optional().default(5),
+  potenciaWatts: z.number().nonnegative(),
+  tarifaKwh: z.number().nonnegative().optional().default(0.85),
+  horasTrabalho: z.number().nonnegative().optional().default(0.5),
+  valorHora: z.number().nonnegative().optional().default(50),
+  custoFixoMensal: z.number().nonnegative().optional().default(500),
+  impressoesPorMes: z.number().positive().optional().default(30),
+  desperdicioPercentual: z.number().min(0).max(100).optional().default(5),
+  ativo: z.boolean().optional().default(true),
+});
+
+export const perfilCustosUpdateSchema = perfilCustosCreateSchema.partial();
+
+export type PerfilCustosCreateInput = z.infer<typeof perfilCustosCreateSchema>;

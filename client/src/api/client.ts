@@ -78,6 +78,30 @@ export interface Orcamento {
   createdAt: string;
 }
 
+export interface PerfilCustos {
+  id: number;
+  nome: string;
+  valorImpressora: number;
+  vidaUtilHoras: number;
+  manutencaoPorHora: number;
+  taxaFalhaPercentual: number;
+  potenciaWatts: number;
+  tarifaKwh: number;
+  horasTrabalho: number;
+  valorHora: number;
+  custoFixoMensal: number;
+  impressoesPorMes: number;
+  desperdicioPercentual: number;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustoExtra {
+  nome: string;
+  valor: number;
+}
+
 export interface Filamento {
   id: number;
   nome: string;
@@ -181,8 +205,8 @@ export const api = {
     }),
 
   // Orçamentos
-  salvarOrcamento: (data: CalculoInput & { nomePeca: string }) =>
-    request<Orcamento>('/orcamentos', {
+  salvarOrcamento: (data: CalculoInput & { nomePeca: string; filamentoId?: number; pesoSuporteGramas?: number; custosExtras?: CustoExtra[] }) =>
+    request<Orcamento & { alertaEstoqueBaixo?: boolean }>('/orcamentos', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -239,4 +263,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
+
+  // Perfis de Custos
+  listarPerfis: () => request<PerfilCustos[]>('/perfis'),
+  criarPerfil: (data: Omit<PerfilCustos, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<PerfilCustos>('/perfis', { method: 'POST', body: JSON.stringify(data) }),
+  atualizarPerfil: (id: number, data: Partial<PerfilCustos>) =>
+    request<PerfilCustos>(`/perfis/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletarPerfil: (id: number) =>
+    request<void>(`/perfis/${id}`, { method: 'DELETE' }),
 };

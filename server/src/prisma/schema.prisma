@@ -59,3 +59,22 @@ model Orcamento {
   precoPremium Float
   createdAt    DateTime @default(now())
 }
+
+model PerfilCustos {
+  id                    Int      @id @default(autoincrement())
+  nome                  String
+  valorImpressora       Float
+  vidaUtilHoras         Float
+  manutencaoPorHora     Float    @default(0)
+  taxaFalhaPercentual   Float    @default(5)
+  potenciaWatts         Float
+  tarifaKwh             Float    @default(0.85)
+  horasTrabalho         Float    @default(0.5)
+  valorHora             Float    @default(50)
+  custoFixoMensal       Float    @default(500)
+  impressoesPorMes      Float    @default(30)
+  desperdicioPercentual Float    @default(5)
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

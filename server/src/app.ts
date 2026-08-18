@@ -5,6 +5,7 @@ import orcamentosRouter from './routes/orcamentos';
 import filamentosRouter from './routes/filamentos';
 import projecaoRouter from './routes/projecao';
 import impressorasRouter from './routes/impressoras';
+import perfisRouter from './routes/perfis';
 import { authRequired } from './middleware/auth';
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/orcamentos', authRequired, orcamentosRouter);
 app.use('/api/filamentos', authRequired, filamentosRouter);
 app.use('/api/projecao', authRequired, projecaoRouter);
 app.use('/api/impressoras', authRequired, impressorasRouter);
+app.use('/api/perfis', authRequired, perfisRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

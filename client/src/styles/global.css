@@ -1276,3 +1276,163 @@ body {
   font-style: italic;
   margin-top: 0.2rem;
 }
+
+
+/* === MODE TOGGLE === */
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  background: var(--accent);
+  padding: 0.2rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  width: fit-content;
+}
+
+.mode-toggle-btn {
+  padding: 0.45rem 1.2rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.mode-toggle-btn.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+/* === MULTI-PIECE === */
+.peca-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  position: relative;
+  box-shadow: var(--shadow);
+}
+
+.peca-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.peca-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.peca-card-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+}
+
+.peca-card-remove:hover {
+  color: var(--danger);
+}
+
+.add-peca-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all var(--transition);
+  margin-bottom: 0.75rem;
+}
+
+.add-peca-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* === CUSTOS EXTRAS === */
+.extras-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.extra-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.extra-item input:first-child {
+  flex: 2;
+}
+
+.extra-item input:nth-child(2) {
+  flex: 1;
+}
+
+.extra-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+}
+
+.extra-remove:hover {
+  color: var(--danger);
+}
+
+/* === STOCK ALERT BANNER === */
+.stock-alert {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  color: #92400e;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* === TOTAL CONSOLIDADO === */
+.total-card {
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.total-card-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.total-card-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
