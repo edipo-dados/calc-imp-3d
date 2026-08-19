@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 interface InputFieldProps {
   label: string;
@@ -23,36 +23,35 @@ export function InputField({
   error,
   placeholder,
 }: InputFieldProps) {
-  const [displayValue, setDisplayValue] = useState<string>(String(value));
+  const [localValue, setLocalValue] = useState<string | null>(null);
+  const isFocused = useRef(false);
 
-  // Sync display when value changes externally (profile/impressora selection)
-  useEffect(() => {
-    setDisplayValue(String(value));
-  }, [value]);
+  // When focused, use localValue. When not focused, use prop value.
+  const displayValue = isFocused.current && localValue !== null ? localValue : String(value);
+
+  const handleFocus = () => {
+    isFocused.current = true;
+    // If current value is 0, start with empty field for easier typing
+    setLocalValue(value === 0 ? '' : String(value));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    setDisplayValue(raw);
+    setLocalValue(raw);
 
-    // Only propagate valid numbers
     const parsed = parseFloat(raw);
     if (!isNaN(parsed)) {
       onChange(parsed);
-    } else if (raw === '' || raw === '-') {
-      // Allow empty/minus but don't propagate yet
     }
   };
 
   const handleBlur = () => {
-    // On blur, if empty or invalid, reset to 0
-    const parsed = parseFloat(displayValue);
+    isFocused.current = false;
+    const parsed = parseFloat(localValue || '');
     if (isNaN(parsed)) {
-      setDisplayValue('0');
       onChange(0);
-    } else {
-      setDisplayValue(String(parsed));
-      onChange(parsed);
     }
+    setLocalValue(null);
   };
 
   return (
@@ -62,6 +61,7 @@ export function InputField({
         <input
           type="number"
           value={displayValue}
+          onFocus={handleFocus}
           onChange={handleChange}
           onBlur={handleBlur}
           min={min}
