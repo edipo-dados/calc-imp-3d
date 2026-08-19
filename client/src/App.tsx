@@ -5,9 +5,10 @@ import { CadastroPage } from './pages/CadastroPage';
 import { ProjecaoPage } from './pages/ProjecaoPage';
 import { LoginPage } from './pages/LoginPage';
 import { AdminPage } from './pages/AdminPage';
+import { SobrePage } from './pages/SobrePage';
 import { CalculoInput, UsuarioInfo, api } from './api/client';
 
-type Tab = 'calculadora' | 'historico' | 'cadastro' | 'projecao' | 'admin';
+type Tab = 'calculadora' | 'historico' | 'cadastro' | 'projecao' | 'admin' | 'sobre';
 
 export default function App() {
   const [usuario, setUsuario] = useState<UsuarioInfo | null>(null);
@@ -115,6 +116,12 @@ export default function App() {
                 👑 Admin
               </button>
             )}
+            <button
+              className={`nav-tab ${activeTab === 'sobre' ? 'active' : ''}`}
+              onClick={() => setActiveTab('sobre')}
+            >
+              Sobre
+            </button>
           </nav>
           <div className="user-info">
             <span className="user-name">{usuario.nome}</span>
@@ -143,6 +150,9 @@ export default function App() {
         )}
         {activeTab === 'admin' && isAdmin && (
           <AdminPage />
+        )}
+        {activeTab === 'sobre' && (
+          <SobrePage />
         )}
       </main>
     </div>

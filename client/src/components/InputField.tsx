@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 
 interface InputFieldProps {
   label: string;
@@ -23,35 +23,29 @@ export function InputField({
   error,
   placeholder,
 }: InputFieldProps) {
-  const [localValue, setLocalValue] = useState<string | null>(null);
-  const isFocused = useRef(false);
-
-  // When focused, use localValue. When not focused, use prop value.
-  const displayValue = isFocused.current && localValue !== null ? localValue : String(value);
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
 
   const handleFocus = () => {
-    isFocused.current = true;
-    // If current value is 0, start with empty field for easier typing
-    setLocalValue(value === 0 ? '' : String(value));
+    setEditing(true);
+    setText(value === 0 ? '' : String(value));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    setLocalValue(raw);
-
-    const parsed = parseFloat(raw);
-    if (!isNaN(parsed)) {
-      onChange(parsed);
+    setText(raw);
+    const n = parseFloat(raw);
+    if (!isNaN(n)) {
+      onChange(n);
     }
   };
 
   const handleBlur = () => {
-    isFocused.current = false;
-    const parsed = parseFloat(localValue || '');
-    if (isNaN(parsed)) {
+    setEditing(false);
+    const n = parseFloat(text);
+    if (isNaN(n) || text.trim() === '') {
       onChange(0);
     }
-    setLocalValue(null);
   };
 
   return (
@@ -60,7 +54,7 @@ export function InputField({
       <div className="input-wrapper">
         <input
           type="number"
-          value={displayValue}
+          value={editing ? text : value}
           onFocus={handleFocus}
           onChange={handleChange}
           onBlur={handleBlur}
