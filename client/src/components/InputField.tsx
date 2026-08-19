@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 interface InputFieldProps {
   label: string;
   value: number;
@@ -21,14 +23,47 @@ export function InputField({
   error,
   placeholder,
 }: InputFieldProps) {
+  const [displayValue, setDisplayValue] = useState<string>(String(value));
+
+  // Sync display when value changes externally (profile/impressora selection)
+  useEffect(() => {
+    setDisplayValue(String(value));
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setDisplayValue(raw);
+
+    // Only propagate valid numbers
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) {
+      onChange(parsed);
+    } else if (raw === '' || raw === '-') {
+      // Allow empty/minus but don't propagate yet
+    }
+  };
+
+  const handleBlur = () => {
+    // On blur, if empty or invalid, reset to 0
+    const parsed = parseFloat(displayValue);
+    if (isNaN(parsed)) {
+      setDisplayValue('0');
+      onChange(0);
+    } else {
+      setDisplayValue(String(parsed));
+      onChange(parsed);
+    }
+  };
+
   return (
     <div className="input-group">
       <label className="input-label">{label}</label>
       <div className="input-wrapper">
         <input
           type="number"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
           min={min}
           max={max}
           step={step}
